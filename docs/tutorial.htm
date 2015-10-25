@@ -1,0 +1,566 @@
+<html>
+<head>
+<title>GSL Tutorial</title>
+</head>
+<body bgcolor="white">
+<blockquote>
+<font face=tahoma size=2>
+<h3>Contents</h3>
+<ul type="disc">
+<li><b><a href="#prolog">Prolog Or What Is GSL For</a></b></li>
+<li><b><a href="#install">Part 1 - Installation</a></b></li>
+<li><b><a href="#start">Part 2 - Starting</a></b></li>
+<ul type="disc">
+<li><a href="#init">How To Initialize Traverser</a></li>
+<li><a href="#launch">Launching Search Engine</a></li>
+<li><a href="#result">Getting Results</a></li>
+</ul>
+<li><b><a href="#traverser">Part 3 - Traversers</a></b></li>
+<ul type="disc">
+<li><a href="#tree">Traverser As a Search Tree</a></li>
+<li><a href="#generic">Traverser As a Generic Object</a></li>
+<li><a href="#reviter">Reverse Iterator</a></li>
+<li><a href="#two">Two Types of Traversers</a></li>
+<li><a href="#callback">Traverser's Callbacks</a></li>
+<li><a href="#epsilon">Example: Epsilon-Transformation with GSL</a></li>
+</ul>
+<li><b><a href="#algo">Part 4 - Search Algorithms</a></b></li>
+<ul type="disc">
+<li><a href="#simple">Simple Forward Search</a></li>
+<li><a href="#thresh">Algorithms With Cost Threshold</a></li>
+<li><a href="#bnb">Branch And Bound Method</a></li>
+<li><a href="#bidir">Bi-directional Search</a></li>
+</ul>
+<li><b><a href="#epilogue">Epilogue Or GSL Advantages</a></b></li>
+</ul>
+
+<br>
+
+<a name="prolog"></a><h3>Prolog Or What Is GSL For</h3>
+<font size=4>T</font>his document presents a new version of Graph Search Library (GSL) and provides
+a step by step tutorial to start using GSL components. It is assumed that a reader
+has a knowledge in a graph search theory as well as understanding of generic
+programming concepts in C++.<br>
+<font size=4>F</font>irst of all it should be mentioned that GSL is not a graph library, it provides
+generic search engine that could be used to find optimal or suboptimal solutions in
+various graph search problems. It means, that a problem should be stated on a graph,
+and there exists an operator to expand a node in the graph. This operator receives
+a node and creates a list of successors or child nodes. During node expanding it is
+necessary to calculate costs of successors. If a problem meets this simple set of
+stated criteria - one can get a bundle of graph search algorithms after coding a node
+expansion operator.<br>
+<font size=4>A</font>s a generic library GSL consists of two orthogonal components -
+travesers and actually generic algorithms. Traverser is a component that knows how to
+navigate through a serch tree and supports a set of operations, that is used by a graph
+search algorithm to control a search tree growth. As one can see further different search
+algorithms look similar in GSL and may be this fact confirms that traverser operation
+algebra really exists.<br>
+<font size=4>GSL</font> library was presented at January, 2000. In the new version GSL 
+functionality is extended while all main features are supported and enhanced. Also the
+engine performance became better.
+
+<a name="install"></a><h3>Part 1 - Installation</h3>
+<font size=4>GSL</font> is written in C++ and is portable with Visual C++ 6.0, Intel 4.0
+and GCC 2.95 compilers. It is delivered as header C++ files. There are no significant
+installation features - just copy all the library files to a place where a compiler can found
+them. One should include in a GSL-related code 3 following header files<br>
+<br>
+<font face="times">
+#include "gsl_config.h"<br>
+#include "traverser.h"<br>
+#include "solver.h"<br>
+</font>
+<br>
+
+<a name="start"></a><h3>Part 2 - Starting</h3>
+<font size=4>T</font>he best way to understand generic graph search idea is to write a short
+sample. Let it be a direct graph search problem. It means that there exists a direct graph
+which is defined by a finite set of nodes and edges between them. Each edge has a cost for a
+transition. The problem is to find a path with minimal summary cost between two nodes in the
+graph. Let the graph nodes are enumerated by integers as well as the edge costs are also integers
+and the graph is defined using Standard Template Library(STL) map container<br>
+<br>
+<font face="times">
+#include &lt;map&gt;<br>
+...<br>
+map&lt;int, map&lt;int, int&gt; &gt; data;<br>
+</font>
+<br>
+For a simplicity's sake non-important details are omitted. Now one can add a graph node and cost
+values anywhere in a code, for example<br>
+<br>
+<font face="times">
+data[0][1] = 10;<br>
+data[1][5] = 12;<br>
+...<br>
+</font>
+<br>
+As one can see, the graph is treated in a two-dimensional array manner. And that is all for the
+problem statement. The next step is to define a traverser parameters. 
+
+<a name="init"></a><h4>How To Initialize Traverser</h4>
+<font size=4>A</font> traverser is a generic component that is used to navigate through a search
+tree. Two main operations in a graph search algorithms are moving forward in a search tree and
+backtracking. These and a few others are already supported by Traverser class. One should write an
+operator that provides a set of child nodes for any parent node in a search tree with calculating
+their's costs. This operator should be written in some predefined manner and for the stated problem
+it looks like this<br>
+<br>
+<font face="times">
+class expand {<br>
+public:
+<blockquote>
+void operator()(list&lt;int&gt; &e, list&lt;int&gt; &ce, int n, int, int c) {
+<blockquote>
+for( map&lt;int,int&gt;::iterator i = data[n].begin(); i != data[n].end(); ++i) {
+<blockquote>
+e.push_back( (*i).first );<br>
+ce.push_back( c + (*i).second );
+</blockquote>
+}<br>
+</blockquote>
+}<br>
+</blockquote>
+}
+</font>
+<br><br>
+<a name="signature"></a><font size=4>T</font>he () operator is overriden and it expects five parameters.
+First one is a list of child nodes or successors of a third parameter n - this is a parent node.
+The second parameter is a list of costs for this nodes - it is evident that an order of elements in these
+two lists is significant, in other words the sizes of the lists should be equal and nodes and their costs
+should be placed in this lists in a similar manner. The fourth parameter is not important for the problem
+- it is a parent of a parent node. The fifth is the parent node cost.<br>
+<font size=4>A</font>s one can see the total cost is accumulated while moving from parent to child
+nodes. The code requires basic STL understanding; as for functionality the iteration is made over an
+elements which have an edge connection the parent node.
+
+<a name="launch"></a><h4>Launching Search Engine</h4>
+<font size=4>B</font>efore launching search engine one should define traverser class type and a search
+algorithm to be used. Let it be A* algorithm. If the cost function is monotonic (in other words
+non-decreasing when one moves from a parent to a child node) one can use forward search algorithm to
+get an optimal solution. Forward search means that nodes are expanded without any backtracking. And a
+traverser knows which node should be expanded next. Sounds good, but how to do it?<br>
+<br>
+<font face="times">
+#include "traverser.h"<br>
+#include "solver.h"<br>
+...<br>
+ExpTr&lt;int, int, expand, less&lt;int&gt; &gt; tr(0);<br>
+ForwardSearch(tr, goal);<br>
+</font>
+</br>
+<font size=4>H</font>ere an exponential traverser is used. Its functionality is based on a best-first search.
+All auxiliary operations - selecting a cursor node, expanding a node, updating a search tree if similar
+nodes appear - are supported by its internal functionality. An external functionality is covered by a
+problem-related expansion operator.<br>
+<a name="template"></a><font size=4>T</font>o initialize traverser template class four parameters should be
+defined. The first one is a node type - nodes in the problem are enumerated by integers. The second parameter is cost type - edges
+have integer cost values. Expansion operator is on the third place in template parameters' list. The fourth
+parameter defines an order of tree nodes - a node that is first in this collection is selected for expansion
+on a next step.<br>
+<font size=4>B</font>efore launching the search engine it is necessary to find when a search terminal
+condition is reached. Let it be the node No. 5 in the graph.<br>
+<br>
+<font face="times">
+bool goal(int n) { return n == 5; }<br>
+</font>
+</br>
+<font size=4>T</font>raverser constructor receives one parameter - a value of root node. The search is started
+from the node No. 0.
+
+<a name="result"></a><h4>Getting Results</h4>
+<font size=4>A</font>fter the engine stops on a terminal condition a traverser contains a snapshot of a
+search tree. To acquire a found solution one should navigate through the search tree from a terminal
+node to a root node to receive nodes on an optimal path. (Sometimes a search result can be acquired from
+a terminal node directly.) For these purposes a reverse solution iterator is used.<br>
+<br>
+<font face="times">
+#include &lt;list&gt;<br>
+...<br>
+typedef RevIter&lt;int, int, expand, less&lt;int&gt; &gt; RevIter_t;<br>
+list&lt;int&gt; result;<br>
+for ( RevIter_t ri = tr.RPathBegin(); ri != tr.RPathEnd(); ++ri ) result.push_front(*ri);<br>
+if (result.empty()) cout << "No path found.\n";<br>
+else { <br>
+<blockquote>
+cout << "Path with cost " << tr.cost() << " found. There are following nodes in the path:\n";<br>
+for (list&lt;int&gt;::iterator i = result.begin; i != result.end(); ++i) cout << *i << ' ';<br>
+cout << '\n';<br>
+</blockquote>
+}<br>
+</font>
+</br>
+<font size=4>A</font>ll traversers class types have a cost function which returns a cost of a node
+which will be expanded next. As for A* algorithm - it is terminated when the next node to be expanded
+is a goal one. That is why its cost is a cost of a found solution.<br>
+<font size=4>T</font>hat is all for the sample program.<br>
+<font size=4>A</font>ctually to start using GSL it is necessary to know<br>
+- about traverser template parameters and their order in template;<br>
+- how to implement expand node and goal predicates;<br>
+- which graph search algorithm to use;<br>
+- how to acquire a solution.<br>
+
+<a name="traverser"></a><h3>Part 3 - Traversers</h3>
+
+<a name="tree"></a><h4>Traverser As a Search Tree</h4>
+<font size=4></font>
+<font size=4>E</font>ach GSL traverser supports two main operators or functions - moving forward in a search
+tree and backtracking. It is just main operators in traverser's algebra. Moving forward means, that a node
+called a cursor is expanded and its childs are put into a search tree with all necessary information. Then a
+next node is selected to be a cursor according to some selection criteria. This operation is called<br>
+<br>
+<font face="times">
+void move_forward();<br>
+</font>
+</br>
+<font size=4>B</font>actracking means, that cursor node is erased from a search tree and a new node is
+selected according to the same criteria as in moving forward operation<br>
+<br>
+<font face="times">
+void backtrack();<br>
+</font>
+<br>
+<font size=4>S</font>ometimes a search space is exhausted - there are no nodes to expand. Call<br>
+<br>
+<font face="times">
+bool empty() const;<br>
+</font>
+<br>
+to verify that.<br>
+
+<a name="generic"></a><h4>Traverser As a Generic Object</h4>
+<font size=4>T</font>o tell about other traverser methods it is necessary to present traverser template
+parameters<br>
+<br>
+<font face="times">
+template&lt;class value_type, class cost_type, class expand_type, class Cmp&gt; class Tr;<br>
+</font>
+<br>
+(<font size=4>P</font>lease pay attention that there is no traverser of "Tr" type - this code is for
+explanatory usage only. See <a href="#two">Two Types Of Traversers</a> section.)<br>
+<font size=4>T</font>he template parameters are described <a href="#template">earlier</a>. What does GSL
+require from these types?<br>
+<font size=4>F</font>or a value type it is necessary to define equality operator because one should check
+nodes in a search tree for equality.<br>
+<font size=4>F</font>or a cost type there are no mandatory operations, one can define changing of node cost
+values in a search tree while expanding a node. In the sample from Part 1 the cost is integer and it is
+accumulated as sum. Sometimes a node cost is just an estimate and it is calculated directly for a node,
+for example, in a case of a heuristics.<br>
+<font size=4>F</font>or an expand type an () operator should be defined according to a stated function
+<a href="#signature">signature</a>.<br>
+<font size=4>T</font>he last type can be either a standard STL type such as "less" or "greater" or one should
+define his own one if it is neccesary to get a custom comparison. This ordering allows to control a
+selection of a next node to expand among alternatives. To get more information about GSL selection
+procedures check <a href="#two">Two Types Of Traversers</a> section.<br>
+<font size=4>A</font>fter naming traverser parameters one can add two methods to traverser's interface.
+It was already mentioned that a cursor is a node in a search tree that would be expanded next. One cannot
+get access to any node in a tree except cursor. To access a cursor and its cost two methods are defined<br>
+<br>
+<font face="times">
+value_type cursor() const;<br>
+cost_type cost() const;<br>
+</font>
+<br>
+<font size=4>S</font>ometimes it is necessary to get an instance of an expand function for a traverser. For
+this purpose the following method is included in a traverser:<br>
+<br>
+<font face="times">
+exp_type& getexpfunc();<br>
+</font>
+<br>
+
+<a name="reviter"></a><h4>Reverse Iterator</h4>
+<font size=4>T</font>his type of object is used to move backward in a search tree - from a child node to a
+parent node. A creation of reverse iterator is accessible via traverser's RPathBegin and RPathEnd factory
+functions only - one cannot create a reverse iterator directly by calling its constructor.<br>
+<br>
+<font face="times">
+RevIter&lt;value_type, cost_type, exp_type,  Cmp&gt; RPathBegin();<br>
+RevIter&lt;value_type, cost_type, exp_type, Cmp&gt; RPathBegin() const;<br>
+</font>
+<br>
+<font size=4>R</font>everse iterator can move in a single direction - from a leaf node towards a tree root
+using ++ operator (prefix and postfix forms are legal). It is usually necessary to gather nodes on a path
+after traverser is stopped.(See <a href="#result">example</a> in "Getting Results" section.)
+
+<a name="two"></a><h4>Two Types of Traversers</h4>
+<font size=4>I</font>n graph search there exist two well-known types of strategies - "best-first" and
+"depth-first". The first one is about supporting all tree branches during search and selecting node to expand
+from all of them. A number of nodes in a computer memory for this kind of search grows exponentially with a
+tree depth. That is why this type of traverser is called exponential or in GSL language "ExpTr". The
+second supports only one branch in a search tree and a number of nodes has a linear estimate - this kind
+of traverser is called linear or "LinTr". Beg pardon for these inaccuracies - it is assumed that all these
+facts are evident, otherwise please refer to books on graph search and artificial intelligence.<br>
+<font size=4>A</font>lthough linear and exponential traversers have a different functionalities,
+they have an almost same set of operations in GSL - that is why they can be used
+with almost any of GSL algorithms. The previous description of non-existing traverser "Tr" satisfies both
+of them. There are no differences for the templates<br>
+<br>
+<font face="times">
+template&lt;class value_type, class cost_type, class expand_type, class Cmp&gt; class ExpTr;<br>
+template&lt;class value_type, class cost_type, class expand_type, class Cmp&gt; class LinTr;<br>
+</font>
+<br>
+<font size=4>A</font> search tree is hidden in a traverser. For algorithm A* there are
+a lot of steps to be done while moving forward or backtracking and they have been already coded.
+The only thing that should be done to launch a traverser is to code correctly node expansion procedure.<br>
+<font size=4>A</font>s one can see traverser taxonomy is based on a memory criteria - a traverser needs
+linear- or exponential-space memory. This set of two types can be extended by others if a traverser
+algebra is still supported by a new type.
+
+<a name="callback"></a><h4>Traverser's Callbacks</h4>
+<font size=4>A</font> traverser looks like a blackbox - roughly speaking a caller can manipulate with it by
+two main operations - move forward and backtrack. Sometimes it is interesting and useful to get into a
+traverser mechanism to observe - which nodes are expanded, what nodes are replaced by a new ones in a search
+tree, etc. For this purposes a collection of callbacks are presented and one can define its own action that
+will take place when some event occurs in a traverser.<br>
+<font size=4>F</font>or the <a href="#start">sample</a> it is useful to print a message when a node is
+selected to be a cursor. The node value and its cost are send to an output by a function<br>
+<br>
+<font face="times">
+void OnSelectCursor(const int& i, const int& cost) { printf("Node %d with cost %d selected.\n", i, cost); }<br>
+</font>
+<br>
+<font size=4>T</font>hen a default traverser handler should be changed to a new one before starting a search<br>
+<br>
+<font face="times">
+ExpTr tr(0);<br>
+...<br>
+tr.set_handler_on_select_cursor(OnSelectCursor);<br>
+...<br>
+ForwardSearch(tr, goal);<br>
+</font>
+<br>
+<font size=4>N</font>ow each time a node is selected to be a cursor the message is printed.<br>
+<font size=4>D</font>ifferent traverser types have different handlers and expect different handler signatures.
+For example, linear traverser can have up to five handlers matching following signatures<br>
+<br>
+<font face="times">
+typedef void(*on_become_empty_t)();<br>
+typedef void(*on_receive_childs_t)(const value_type&, const list<value_type>&);<br>
+typedef void(*on_select_cursor_t)(const value_type&, const cost_type&);<br>
+typedef void(*on_delete_cursor_t)(const value_type&);<br>
+typedef void(*on_expand_root_t)();<br>
+</font>
+<br>
+<font size=4>F</font>irst handler is called when there are no more nodes to expand, i.e. a search space
+is exhausted. The second one is called after node expansion and it sends back a parent node and a child nodes'
+collection. The third is called when a node is selected to be a cursor. The fourth is called when a search
+algorithm performs backtrack on a cursor node. The last one - the fifth - is called on expanding a root node
+and is used to initialize external objects before launching a search process.<br>
+<font size=4>T</font>hese handlers could be initialized by following setters<br>
+<br>
+<font face="times">
+on_become_empty_t set_handler_on_become_empty(on_become_empty_t new_handler);<br>
+on_receive_childs_t set_handler_on_receive_childs(on_receive_childs_t new_handler);<br>
+on_select_cursor_t set_handler_on_select_cursor(on_select_cursor_t new_handler);<br>
+on_delete_cursor_t set_handler_on_delete_cursor(on_delete_cursor_t new_handler);<br>
+on_expand_node_t set_handler_on_expand_node_t(on_expand_node_t new_handler);<br>
+</font>
+<br>
+<font size=4>S</font>etters look similar - they set a new handler instead of an old one and return the
+last.<br>
+<font size=4>P</font>lease mention that it is not neccesary to define any traverser handler - in this case
+no callback will occur.<br>
+<font size=4>A</font>s far as an exponetial traverser functionality is more complex than a linear one a four
+following handlers are added to the five aforementioned.<br>
+<br>
+<font face="times">
+typedef void(*on_dup_closed_node_t)(const value_type&, const cost_type&, const value_type&);<br>
+typedef void(*on_reexp_closed_node_t)(const value_type&, const cost_type&);<br>
+typedef void(*on_dup_opened_node_t)(const value_type&, const cost_type&, const value_type&);<br>
+typedef void(*on_reexp_opened_node_t)(const value_type&, const cost_type&);<br>
+</font>
+<br>
+<font size=4>F</font>or an exponential traverser node can be found in one of two collections - in a collection
+of opened nodes (nodes ready to expand) or in a collection of closed nodes (nodes that are expanded). While
+expanding a cursor node a reexpansion can occur, i.e. one of child nodes could match by a node value with
+a node in an opened nodes collection or in a closed nodes collection. If a cost of a new node is less than
+an old one then an old node is replaced by a new one.<br>
+<font size=4>T</font>he four handler types provide callbacks for these cases. The first two are about
+finding similar node in a closed collection. "on_dup_closed_node_t" is a handler type for finding matching
+node in a closed collection. The signature contains an old node value and cost plus a value of its parent
+node. "on_reexp_close_node_t" gives a signal that reexpansion is occured in a closed nodes collection. New
+node value and cost should be provided in a handler signature. The second two handler types relate to an
+opened nodes collection and are similar to described. To set this handlers one should use following traverser
+methods<br>
+<br>
+<font face="times">
+on_dup_closed_node_t set_handler_on_dup_closed_node(on_dup_closed_node_t new_handler);<br>
+on_reexp_closed_node_t set_handler_on_reexp_closed_node(on_reexp_closed_node_t new_handler);<br>
+on_dup_opened_node_t set_handler_on_dup_opened_node(on_dup_opened_node_t new_handler);<br>
+on_reexp_opened_node_t set_handler_on_reexp_opened_node(on_reexp_opened_node_t new_handler);<br>
+</font>
+<br>
+
+<a name="epsilon"></a><h4>Example: Epsilon-Transformation With GSL</h4>
+<font size=4>E</font>psilon transformation is a technique to get an approximate solution by changing a cost
+function - an edge cost that is less than a given threshold is equated to zero. The result consists in reducing
+a search space with a small (epsilon) variation in a found solution cost.<br>
+<font size=4>T</font>o apply an epsilon transformation to the problem stated in <a href="#start">Part 2</a>
+one should change <a href="#init">the expand function</a> to a following one:<br>
+<br>
+<font face="times">
+class expand {<br>
+<blockquote>
+int eps;
+</blockquote>
+public:
+<blockquote>
+void operator()(list&lt;int&gt; &e, list&lt;int&gt; &ce, int n, int, int c) {
+<blockquote>
+for( map&lt;int,int&gt;::iterator i = data[n].begin(); i != data[n].end(); ++i) {
+<blockquote>
+e.push_back( (*i).first );<br>
+int edgecost = (*i).second;<br>
+if (edgecost <= eps) edgecost = 0;<br>
+ce.push_back( c + edgecost );
+</blockquote>
+}<br>
+</blockquote>
+}<br>
+void SetEps(int value) { eps = value; }<br>
+int GetEps() { return eps; }<br>
+expand() : eps(0) {}<br>
+</blockquote>
+}<br>
+</font>
+<br>
+<font size=4>A</font>fter a traverser is initialized one can change an epsilon value to 10 by the following
+call:<br>
+<br>
+<font face="times">
+tr.getexpfunc().SetEps(10);<br>
+</font>
+<br>
+<font size=4>T</font>wo callbacks are used to calculate a number of node expansions<br>
+<br>
+<font face="times">
+long num_expansions;<br>
+void onExpandRoot() { num_expansions = 0; }<br>
+void onSelectCursor(const int&, const int&) { ++num_expansions; }<br>
+</font>
+<br>
+<font size=4>N</font>ow one can demonstrate a full call code.<br>
+<br>
+<font face="times">
+typedef ExpTr&ltint, int, expand&gt ExpTr_t;<br>
+ExpTr_t tr = ExpTr_t(0);<br>
+tr.set_handler_on_expand_root(onExpandRoot);<br>
+tr.set_handler_on_select_cursor(onSelectCursor);<br>
+tr.getcostfunc().SetEps(10);<br>
+ForwardSearch(tr, goal);<br>
+printf("Number of node expansions is %d\n", num_expansions);<br>
+</font>
+<br>
+<font size=4>T</font>hat is all.
+
+<a name="algo"></a><h3>Part 4 - Search Algorithms</h3>
+<font size=4>N</font>ow it is time to tell in short about GSL core idea. It was mentioned that a traverser
+knows how to move forward and backtrack but does not know in fact when to perform this actions. A search
+algorithm knows that. It is generic by nature, i.e. it can work with any type of a traverser if only a
+traverser supports a set of necessary operations. Implementations are shown for a few search algorithms
+whereas others are introduced by descriptions and interfaces. If necessary - check GSL code please.
+
+<a name="simple"></a><h4>Simple Forward Search</h4>
+<font size=4>I</font>t means that a traverser moves forward in a search tree until one of two events
+occurs - a search space becomes exhausted or a goal node is selected as a traverser cursor.<br>
+<br>
+<font face="times">
+template &lt;class Tr, class Goal&gt;<br>
+void ForwardSearch(Tr& tr, Goal goal) {<br>
+<blockquote>
+while( !tr.empty() && !goal( tr.cursor() ) ) tr.move_forward();
+</blockquote>
+}<br>
+</font>
+<br>
+<font size=4>G</font>oal predicate could be a class or a function.<br>
+<font size=4>I</font>f one uses a linear traverser the algorithm implements a depth-first search, if an
+exponential one - it is A* algorthm!<br>
+
+<a name="thresh"></a><h4>Algorithms With Cost Threshold</h4>
+<font size=4>S</font>uppose one wants to find a first solution with a cost no greater than a given
+threshold. In GSL it looks like this<br>
+<br>
+<font face="times">
+template &lt;class Tr, class Goal&gt;<br>
+void BoundedSearch(Tr &tr, Goal goal, const typename Tr::cost_type &bound) {<br>
+<blockquote>
+while( !tr.empty() ) {<br>
+<blockquote>
+if ( tr.cost() > bound ) tr.backtrack();<br>
+else if( goal( tr.cursor() ) ) return;<br>
+else tr.move_forward();<br>
+</blockquote>
+}
+</blockquote>
+}<br>
+</font>
+<br>
+<font size=4>L</font>et a traverser has an exponential type. Suppose that a cost function is non-monotonic
+in a search tree, otherwise a first found solution is optimal. If so this algorithm could be used to make a
+solution more precise.<br>
+<font size=4>F</font>or a linear traverser a search continues till a required solution is found or a search
+space is exhausted.<br>
+<font size=4>I</font>f it is necessary to find an optimal solution and it should be no greater than a given
+threshold, use the following algorithm<br>
+<br>
+<font face="times">
+template &lt;class Tr, class Goal&gt;<br>
+void BoundedOptSearch(Tr &tr, Goal goal, const typename Tr::cost_type &bound);<br>
+</font>
+<br>
+
+<a name="bnb"></a><h4>Branch And Bound Method</h4>
+<font size=4>S</font>ummarizing previous algothms one can deduce a well-known branch-and-bound method. To be
+used with this algorithm a traverser should support a copy constructor and an equality operator to store an
+intermediate best alternative.<br>
+<br>
+<font face="times">
+template &lt;class Tr, class Goal&gt;<br>
+void BranchAndBound(Tr &tr, Goal goal);<br>
+</font>
+<br>
+<font size=4>F</font>or a linear traverser it serves as a classical method to find an optimal solution.
+
+<a name="bidir"></a><h4>Bi-directional Search</h4>
+<font size=4>T</font>his type of search could be applied only to an exponential traverser. Two search
+frontiers move to each other until they meet. For that purpose an exponential traverser has "contains"
+method to verify that a node already exists in a traverser frontier.<br>
+<br>
+<font face="times">
+bool contains(const value_type) const<br>
+</font>
+<br>
+<font size=4>A</font>n algorithm looks like this<br>
+<br>
+<font face="times">
+template &lt;class Tr1, class Tr2&gt;<br>
+void BidirectionalSearch(Tr1& tr1, Tr2& tr2) {<br>
+<blockquote>
+bool first = true;<br>
+while( !tr1.empty() & !tr2.empty() ) {<br>
+<blockquote>
+if(first) { if( tr2.contains(tr1.cursor()) ) return; tr1.move_forward(); first = false; }<br>
+else { if( tr1.contains(tr2.cursor()) ) return; tr2.move_forward(); first = true; }<br>
+</blockquote>
+}<br>
+</blockquote>
+}<br>
+</font>
+<br>
+<font size=4>P</font>ay attention, please, that frontier traversers are of different types because of
+different node expansion operators.
+
+<a name="epilogue"></a><h3>Epilogue Or GSL Advantages</h3>
+<font size=4>O</font>nce a node expansion class is written, all types of traversers and algorithms are at
+hand. One can select a most appropriate algorithm according to a memory and/or performance requirements. Also
+the library can be extended either in algorithms or in traversers area. None of performance is lost due to
+significant search tree processing optimizations. And, finally, a traverser functionality is opened for an
+outer world through a callback mechanism.<br>
+
+</font>
+</blockquote>
+</body>
+</html>

@@ -1,0 +1,39 @@
+ARCHIVE_NAME=gsl10_ced
+
+DATE=$(shell date +%m%d)0000
+
+FIND_BASE=find . \( -type d -name rcs -prune \) -o \( -type d -name distr -prune \) -o \( -type f -name makedistr -prune \)
+FILES_AND_DIRS_FIND=$(FIND_BASE) -o \( -name "*" -print \)
+FILES_ONLY_FIND=$(FIND_BASE) -o \( -type f -name "*" -print \)
+DIRS_ONLY_FIND=$(FIND_BASE) -o \( -type d -name "*" -print \)
+
+DISTR_DIR=./distr
+BIN_DIR=./bin
+TAR_FILE=$(DISTR_DIR)/$(ARCHIVE_NAME).tar
+TARGZ_FILE=$(TAR_FILE).gz
+ZIP_FILE=$(DISTR_DIR)/$(ARCHIVE_NAME).zip
+
+
+gslprompt:
+	@echo "Graph Search Library(C), 1999-2003"
+
+clean: gslprompt
+	@if [ -d $(DISTR_DIR) ]; then \
+		echo "Deleting distr directory..."; \
+		rm -rf $(DISTR_DIR); \
+	fi
+	@if [ -d $(BIN_DIR) ]; then \
+		echo "Deleting bin directory..."; \
+		rm -rf $(BIN_DIR); \
+	fi
+distr: clean
+	@echo "Creating distr directory...";
+	@mkdir $(DISTR_DIR)
+	@echo "Creating TAR.GZ archive..."
+	@touch -c -a -m -t$(DATE) `$(FILES_AND_DIRS_FIND)`
+	@tar cf $(TAR_FILE) `$(FILES_ONLY_FIND)` 
+	@gzip $(TAR_FILE)
+	@touch -c -t$(DATE) $(TARGZ_FILE) 
+	@echo "Creating ZIP archive..."
+	@$(FILES_AND_DIRS_FIND) | zip -q $(ZIP_FILE) -@
+	@touch -c -t$(DATE) $(ZIP_FILE)
